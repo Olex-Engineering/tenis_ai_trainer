@@ -1,1 +1,1 @@
-extern uint16_t conn_handle;
+#define IS_DEV   1;
