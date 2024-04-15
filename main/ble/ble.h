@@ -8,3 +8,5 @@ extern uint16_t conn_handle;
 
 void init_ble(void);
 
+void start_accepting_new_device_timer(void);
+

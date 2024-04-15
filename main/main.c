@@ -22,6 +22,7 @@
 #include "esp_log.h"
 
 #include "ble/ble.h"
+#include "storage/storage.h"
 
 void task_set_timer(void *param);
 
@@ -44,6 +45,7 @@ void task_set_timer(void *param) {
 
 void app_main(void)
 {
+    init_storage();
     init_ble();
     xTaskCreate(task_set_timer, "task_set_time", 4096, NULL, 5, NULL);
 }

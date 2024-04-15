@@ -2,6 +2,10 @@
 #include <stdbool.h>
 #include <string.h>
 
+//FreeRTOS
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
 // BLE
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
@@ -10,11 +14,15 @@
 #include "host/util/util.h"
 #include "services/gap/ble_svc_gap.h"
 #include "host/ble_gap.h"
+#include "nvs_flash.h"
 
 #include "ble.h"
 #include "ble_services.h"
 #include "ble/services/hit_service.h"
+#include "ble/services/manufacture_service.h"
 #include "helpers/utils.h"
+#include "storage/ble_storage.h"
+#include "ble/helpers/ble_device_util.h"
 
 uint16_t conn_handle;
 static uint8_t blehr_addr_type;
@@ -25,49 +33,72 @@ static void set_ble_config(void);
 static void set_default_device_name(void);
 static void ble_store_config_init(void);
 static void advertise(void);
+static void handle_connection_evt(int conn_status);
+static bool is_device_paired(uint8_t *addr);
+
+static struct ble_gap_conn_desc desc;
+
+static void handle_connection_evt(int conn_status) {
+    /* A new connection was established or a connection attempt failed */
+    MODLOG_DFLT(INFO, "connection %s; status=%d\n",
+                conn_status == 0 ? "established" : "failed",
+                conn_status);
+
+    uint16_t rc = ble_att_set_preferred_mtu(PREFERRED_MTU_VALUE);
+
+    if (rc != 0) {
+        ESP_LOGE(BLE_TAG, "Failed to set preferred MTU; rc = %d", rc);
+    }
+
+    if (is_new_device_accepted == false && conn_status == 0) {
+        if (!is_device_paired(desc.peer_id_addr.val)) {
+            ESP_LOGI(BLE_TAG, "Device is not accepted");
+            ble_gap_terminate(conn_handle, 0x05);
+            ble_store_util_delete_peer(&desc.peer_id_addr);
+        }
+    }
+    
+
+    if (conn_status != 0) {
+        /* Connection failed; resume advertising */
+        advertise();
+    }
+}
+
+static bool is_device_paired(uint8_t *addr) {
+    uint8_t saved_devices[BLE_DEVICES_DATA_LENGTH] = { 0 };
+    uint8_t saved_devices_count = 0;
+    bool is_device_found = false;
+
+    esp_err_t err = get_saved_device_addresses(saved_devices, &saved_devices_count);
+    if (err != ESP_ERR_NVS_NOT_FOUND) {
+        ESP_ERROR_CHECK(err);
+    }
+
+    if (saved_devices_count == 0) { return false; }
+
+
+    for (uint8_t i = 0; i < saved_devices_count; i++) {
+        is_device_found = is_addresses_equals(addr, &saved_devices[i * 6]);
+
+        if (is_device_found) { break; }
+    }
+
+    ESP_LOGI(BLE_TAG, "Paired device found: %s", is_device_found ? "true" : "false");
+    return is_device_found;
+}
 
 static int blehr_gap_event(struct ble_gap_event *event, void *arg)
 {
-    struct ble_gap_conn_desc desc;
+    int rc;
 
     switch (event->type) {
     case BLE_GAP_EVENT_CONNECT:
-        /* A new connection was established or a connection attempt failed */
-        MODLOG_DFLT(INFO, "connection %s; status=%d\n",
-                    event->connect.status == 0 ? "established" : "failed",
-                    event->connect.status);
-
-        uint16_t rc = ble_att_set_preferred_mtu(PREFERRED_MTU_VALUE);
-
-        if (rc != 0) {
-            ESP_LOGE(BLE_TAG, "Failed to set preferred MTU; rc = %d", rc);
-        }
-
-        
-        if (event->connect.status == 0) {
-            conn_handle = event->connect.conn_handle;
-            rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
-            assert(rc == 0);
-            print_addr(desc.peer_id_addr.val);
-            is_new_device_accepted = false;
-        }
-
-
-        if (is_new_device_accepted == false && event->connect.status == 0) {
-            if (desc.peer_id_addr.val[0] != 0xac) {
-                ESP_LOGE(BLE_TAG, "Device is not accepted");
-                ble_gap_terminate(conn_handle, 0x05);
-                ble_store_util_delete_peer(&desc.peer_id_addr);
-            }
-        }
-
-        if (event->connect.status != 0) {
-            /* Connection failed; resume advertising */
-            advertise();
-        }
-
+        conn_handle = event->connect.conn_handle;
+        rc = ble_gap_conn_find(event->repeat_pairing.conn_handle, &desc);
+        assert(rc == 0);
+        handle_connection_evt(event->connect.status);
         break;
-
 
     case BLE_GAP_EVENT_DISCONNECT:
         MODLOG_DFLT(INFO, "disconnect; reason=%d\n", event->disconnect.reason);
@@ -93,10 +124,20 @@ static int blehr_gap_event(struct ble_gap_event *event, void *arg)
 
         break;
     case BLE_GAP_EVENT_IDENTITY_RESOLVED:
-        MODLOG_DFLT(INFO, "autorize\n");
+        MODLOG_DFLT(INFO, "identity resolved\n");
         rc = ble_gap_conn_find(event->identity_resolved.conn_handle, &desc);
         assert(rc == 0);
         print_addr(desc.peer_id_addr.val);
+
+        if (!is_device_paired(desc.peer_id_addr.val)) {
+            esp_err_t err = save_paired_device(desc.peer_id_addr.val);
+            if (err != ESP_OK) {
+                ESP_LOGE(BLE_TAG, "Failed to save paired device");
+            } else {
+                is_new_device_accepted = false;
+            }
+
+        };
 
         break;
     case BLE_GAP_EVENT_ADV_COMPLETE:
@@ -188,10 +229,11 @@ static void advertise(void)
     fields.name_is_complete = 1;
 
     fields.uuids16 = (ble_uuid16_t[]) {
-        BLE_UUID16_INIT(HIT_SERVICE_UUID)
+        BLE_UUID16_INIT(HIT_SERVICE_UUID),
+        BLE_UUID16_INIT(DEVICE_INFO_SVC_UUID),
     };
 
-    fields.num_uuids16 = 1;
+    fields.num_uuids16 = 2;
     fields.uuids16_is_complete = 1;
 
 
@@ -288,10 +330,36 @@ void set_ble_config(void) {
     ble_hs_cfg.sm_their_key_dist |= BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID;
 }
 
+void set_is_new_device_accepted_from_storage(void) {
+    is_new_device_accepted = !is_some_saved_deviced_exist();
+
+    ESP_LOGI(BLE_TAG, "Is saved ble device exist - %s", !is_new_device_accepted ? "true" : "false");
+}
+
+//TODO: add LED logic
+void accept_new_device_timer_callback(TimerHandle_t xTimer) {
+    is_new_device_accepted = false;
+    xTimerDelete(xTimer, 0);
+}
+
+//TODO: add LED logic
+void start_accepting_new_device_timer(void) {
+    is_new_device_accepted = true;
+    TimerHandle_t timer_handle = xTimerCreate("ACCEPTING_NEW_DEVICE_TIMER", pdMS_TO_TICKS(10000), pdFALSE, NULL, accept_new_device_timer_callback);
+    xTimerStart(timer_handle, 0);
+}
+
 void init_ble(void) {
+    int ret = nimble_port_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(BLE_TAG, "Failed to init nimble %d ", ret);
+        return;
+    }
+
     set_ble_config();
     init_ble_services();
     set_default_device_name();
     ble_store_config_init();
     nimble_port_freertos_init(blehr_host_task);
+    set_is_new_device_accepted_from_storage();
 }

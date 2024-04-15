@@ -10,9 +10,11 @@
 #include "ble/ble.h"
 #include "ble/ble_services.h"
 #include "ble/services/hit_service.c"
+#include "ble/services/manufacture_service.c"
 
 const struct ble_gatt_svc_def ble_services[] = {
-    hit_service,
+    hit_service_svc,
+    device_info_svc,
     {
         0,// End of services
     }
@@ -24,13 +26,13 @@ void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
 
     switch (ctxt->op) {
     case BLE_GATT_REGISTER_OP_SVC:
-        ESP_LOGE(BLE_SVCS_TAG, "registered service %s with handle=%d\n",
+        ESP_LOGI(BLE_SVCS_TAG, "registered service %s with handle=%d\n",
                     ble_uuid_to_str(ctxt->svc.svc_def->uuid, buf),
                     ctxt->svc.handle);
         break;
 
     case BLE_GATT_REGISTER_OP_CHR:
-        ESP_LOGE(BLE_SVCS_TAG, "registering characteristic %s with "
+        ESP_LOGI(BLE_SVCS_TAG, "registering characteristic %s with "
                     "def_handle=%d val_handle=%d\n",
                     ble_uuid_to_str(ctxt->chr.chr_def->uuid, buf),
                     ctxt->chr.def_handle,
@@ -38,7 +40,7 @@ void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
         break;
 
     case BLE_GATT_REGISTER_OP_DSC:
-        ESP_LOGE(BLE_SVCS_TAG, "registering descriptor %s with handle=%d\n",
+        ESP_LOGI(BLE_SVCS_TAG, "registering descriptor %s with handle=%d\n",
                     ble_uuid_to_str(ctxt->dsc.dsc_def->uuid, buf),
                     ctxt->dsc.handle);
         break;
