@@ -23,6 +23,8 @@
 
 #include "ble/ble.h"
 #include "storage/storage.h"
+#include "esp_err.h"
+#include "esp_pm.h"
 
 void task_set_timer(void *param);
 
@@ -45,6 +47,12 @@ void task_set_timer(void *param) {
 
 void app_main(void)
 {
+    esp_pm_config_esp32_t pm_config = {
+        .max_freq_mhz = 80, // e.g. 80, 160, 240
+        .min_freq_mhz = 40, // e.g. 40
+        .light_sleep_enable = true, // enable light sleep
+    };
+    ESP_ERROR_CHECK( esp_pm_configure(&pm_config) );
     init_storage();
     init_ble();
     xTaskCreate(task_set_timer, "task_set_time", 4096, NULL, 5, NULL);

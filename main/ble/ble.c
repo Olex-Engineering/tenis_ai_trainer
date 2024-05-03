@@ -95,7 +95,7 @@ static int blehr_gap_event(struct ble_gap_event *event, void *arg)
     switch (event->type) {
     case BLE_GAP_EVENT_CONNECT:
         conn_handle = event->connect.conn_handle;
-        rc = ble_gap_conn_find(event->repeat_pairing.conn_handle, &desc);
+        rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
         assert(rc == 0);
         handle_connection_evt(event->connect.status);
         break;
@@ -150,8 +150,7 @@ static int blehr_gap_event(struct ble_gap_event *event, void *arg)
         MODLOG_DFLT(INFO, "encryption change event; status=%d ",
                     event->enc_change.status);
         rc = ble_gap_conn_find(event->enc_change.conn_handle, &desc);
-        assert(rc == 0);
-        print_addr(desc.peer_id_addr.val);
+        // print_addr(desc.peer_id_addr.val);
         
         break;
 
@@ -227,6 +226,8 @@ static void advertise(void)
     fields.name = (uint8_t *) device_name;
     fields.name_len = strlen(device_name);
     fields.name_is_complete = 1;
+    fields.adv_itvl = 1000U;
+    fields.adv_itvl_is_present = 1;
 
     fields.uuids16 = (ble_uuid16_t[]) {
         BLE_UUID16_INIT(HIT_SERVICE_UUID),
@@ -269,7 +270,6 @@ static void blehr_on_sync(void)
     rc = ble_hs_id_set_rnd(addr.val);
     assert(rc == 0);
 
-    ble_hs_pvcy_rpa_config(true);
     rc = ble_hs_util_ensure_addr(1);
     assert(rc == 0);
 
@@ -357,6 +357,7 @@ void init_ble(void) {
     }
 
     set_ble_config();
+    
     init_ble_services();
     set_default_device_name();
     ble_store_config_init();
