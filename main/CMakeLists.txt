@@ -1,2 +1,2 @@
-idf_component_register(SRCS "main.c" "helpers/utils.c" "storage/storage.c" "storage/ble_storage.c" "ble/ble.c" "ble/ble_services.c" "ble/services/battery_service.c" "ble/services/manufacture_service.c" "ble/helpers/ble_device_util.c"
+idf_component_register(SRCS "main.c" "helpers/utils.c" "global_control/global_control.c" "icm/icm.c" "hit_recording_handler/hit_recording_handler.c" "touch_control/touch_control.c" "btr_gauge/btr_gauge.c" "buzzer/buzzer.c" "storage/storage.c" "storage/ble_storage.c" "led/led.c" "ble/ble.c" "ble/ble_services.c" "ble/services/battery_service.c" "ble/services/manufacture_service.c" "ble/helpers/ble_device_util.c"
                     INCLUDE_DIRS ".")
