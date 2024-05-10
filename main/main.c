@@ -42,11 +42,10 @@ void app_main(void)
         .light_sleep_enable = false, // enable light sleep
     };
     ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
-    init_global_control();
     init_storage();
+    init_global_control();
     init_led();
     // init_ble();
-    // beep_good_hit();
     init_icm();
     init_btr_gauge();
     touch_control_init();
@@ -58,4 +57,7 @@ void app_main(void)
     if (!IS_DATA_COLLECTOR_DEVICE) {
         icm_enable();
     }
+
+    buzzer_init();
+    play_power_on_sound();
 }
