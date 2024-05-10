@@ -21,39 +21,41 @@
 #include <freertos/task.h>
 #include "esp_log.h"
 
+#include "main.h"
 #include "ble/ble.h"
 #include "storage/storage.h"
 #include "esp_err.h"
 #include "esp_pm.h"
-
-void task_set_timer(void *param);
-
-void task_set_timer(void *param) {
-    struct timeval tv_set = {
-        .tv_sec = 1711988732,
-        .tv_usec = 0
-    };
-    settimeofday(&tv_set, NULL);
-
-    // printf("Set time: %lld \n", (int64_t)tv_set.tv_sec);
-
-    while (1) {
-        struct timeval tv_now;
-        gettimeofday(&tv_now, NULL);
-        // printf("Current time: %lld \n", (int64_t)tv_now.tv_sec);
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
-    }
-}
+#include "led/led.h"
+#include "buzzer/buzzer.h"
+#include "icm/icm.h"
+#include "btr_gauge/btr_gauge.h"
+#include "hit_recording_handler/hit_recording_handler.h"
+#include "touch_control/touch_control.h"
+#include "global_control/global_control.h"
 
 void app_main(void)
 {
-    esp_pm_config_esp32_t pm_config = {
+    esp_pm_config_t pm_config = {
         .max_freq_mhz = 80, // e.g. 80, 160, 240
         .min_freq_mhz = 40, // e.g. 40
-        .light_sleep_enable = true, // enable light sleep
+        .light_sleep_enable = false, // enable light sleep
     };
-    ESP_ERROR_CHECK( esp_pm_configure(&pm_config) );
+    ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
+    init_global_control();
     init_storage();
-    init_ble();
-    xTaskCreate(task_set_timer, "task_set_time", 4096, NULL, 5, NULL);
+    init_led();
+    // init_ble();
+    // beep_good_hit();
+    init_icm();
+    init_btr_gauge();
+    touch_control_init();
+
+    #if IS_DATA_COLLECTOR_DEVICE
+        init_hit_recording();
+    #endif
+
+    if (!IS_DATA_COLLECTOR_DEVICE) {
+        icm_enable();
+    }
 }
