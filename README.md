@@ -1,72 +1,32 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C6 | ESP32-H2 | ESP32-S3 |
-| ----------------- | ----- | -------- | -------- | -------- | -------- | -------- |
+| Supported Targets | ESP32-S3 |
+| ----------------- | -------- |
 
-# BLE Heart Rate Measurement Example
+# Tennis Player Assistant Device
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+Welcome to the Tennis Player Assistant Device project! This innovative creation is designed to revolutionize the way tennis players analyze and improve their game. By combining cutting-edge technology with the dynamics of tennis, our device provides players with invaluable insights and actionable statistics to elevate their performance on the court.
 
-This example creates GATT server demonstrating standard Heart Rate measurement service. It simulates Hear rate measurement and notifies to client when the notifications are enabled.
+## Project Overview
 
-It uses ESP32's Bluetooth controller and NimBLE stack based BLE host
+The Tennis Player Assistant Device is a compact gadget designed to attach seamlessly to your tennis racket. Utilizing advanced gyro and accelerometer sensors, coupled with artificial intelligence, it offers comprehensive analysis of your gameplay. From shot quality to serve efficiency, from identifying technical flaws to suggesting corrective measures, our device is your ultimate companion in mastering the sport.
 
-This example aims at understanding notification subscriptions and sending notifications.
+## Technology Stack
 
-To test this demo, any BLE scanner app can be used.
+- **Board**: ESP32S3
+- **Framework**: esp-idf
+- **Main Logic**: Implemented using FreeRTOS tasks and queues. Each internal component features an action queue, accessible via public functions.
+- **Communication**: Utilizes Bluetooth Low Energy (BLE) for external communication.
+- **Power Management**: Implements light sleep, and deep sleep modes for efficient power usage. Powered by a 3.7V battery. Use external 32.768kHz cristall for BLE Modem sleep.
+- **Battery Gauge**: Includes a battery gauge to monitor battery State of Charge (SOC) level.
+- **User Interface**: All user inputs are managed through a single touch control interface. Functions include long touch for power on/off, and short touch for session start/end or data collection process start/end in DATA_COLLECTOR mode.
+- **User Outputs**: Equipped with a buzzer and LED for user feedback and notifications.
 
-Note :
+## Configuration Options
 
-* To install the dependency packages needed, please refer to the top level [README file](../../../README.md#running-test-python-script-pytest).
-* Currently this Python utility is only supported on Linux (BLE communication is via BLuez + DBus).
+- **Device Mode**: Controlled by the IS_DATA_COLLECTOR_DEVICE flag, enabling switching to data collector mode. In this mode, raw data from the gyro and accelerometer is collected and transmitted via BLE to mobile devices and subsequently to AWS S3 for storage and analysis.
 
-## How to Use Example
+## License
 
-Before project configuration and build, be sure to set the correct chip target using:
+Proprietary License
 
-```bash
-idf.py set-target <chip_name>
-```
+All rights reserved. No part of this software may be reproduced, distributed, or transmitted in any form or by any means, including photocopying, recording, or other electronic or mechanical methods, without the prior written permission of the copyright holder.
 
-### Hardware Required
-
-* A development board with ESP32/ESP32-C3 SoC (e.g., ESP32-DevKitC, ESP-WROVER-KIT, etc.)
-* A USB cable for Power supply and programming
-
-See [Development Boards](https://www.espressif.com/en/products/devkits) for more information about it.
-
-### Build and Flash
-
-Run `idf.py -p PORT flash monitor` to build, flash and monitor the project.
-
-(To exit the serial monitor, type ``Ctrl-]``.)
-
-See the [Getting Started Guide](https://idf.espressif.com/) for full steps to configure and use ESP-IDF to build projects.
-
-## Example Output
-
-This console output can be observed when blehr is connected to client and client enables notifications:
-
-```
-I (91) BTDM_INIT: BT controller compile version [fe7ced0]
-I (91) system_api: Base MAC address is not set, read default base MAC address from BLK0 of EFUSE
-I (181) phy: phy_version: 4100, 6fa5e27, Jan 25 2019, 17:02:06, 0, 0
-I (421) NimBLE_BLE_HeartRate: BLE Host Task Started
-GAP procedure initiated: stop advertising.
-Device Address: xx:xx:xx:xx:xx:xx
-GAP procedure initiated: advertise; disc_mode=2 adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=0 adv_itvl_max=0
-connection established; status=0
-subscribe event; cur_notify=1
- value handle; val_handle=3
-I (21611) BLE_GAP_SUBSCRIBE_EVENT: conn_handle from subscribe=0
-GATT procedure initiated: notify; att_handle=3
-GATT procedure initiated: notify; att_handle=3
-GATT procedure initiated: notify; att_handle=3
-GATT procedure initiated: notify; att_handle=3
-GATT procedure initiated: notify; att_handle=3
-GATT procedure initiated: notify; att_handle=3
-GATT procedure initiated: notify; att_handle=3
-
-```
-
-## Troubleshooting
-
-For any technical queries, please open an [issue](https://github.com/espressif/esp-idf/issues) on GitHub. We will get back to you soon.
